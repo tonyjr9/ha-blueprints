@@ -1,80 +1,53 @@
-blueprint:
-  name: Motion Light Full-Day Dim-Night
-  description: "Full bright before midnight → 50% dim. After: 10% → off."
-  domain: automation
-  input:
-    motion_entity:
-      name: Motion Sensor
-      selector:
-        entity:
-          domain: binary_sensor
-          device_class: motion
-    light_target:
-      name: Light(s)
-      selector:
-        target:
-          entity: light
-    no_motion_wait:
-      name: Wait time (seconds)
-      default: 120
-      selector:
-        number:
-          min: 0
-          max: 3600
-          unit_of_measurement: seconds
-    midnight_time:
-      name: Midnight Cutoff
-      default: "00:00:00"
-      selector:
-        time: {}
-    night_brightness_pct:
-      name: Night Brightness (%)
-      default: 10
-      selector:
-        number:
-          min: 1
-          max: 50
-
+alias: Motion Light Hall Entry
+description: Full before midnight -> 50% dim; after -> 10% -> off (Sonoff cooldown handled)
 mode: restart
-max_exceeded: silent
-
 trigger:
   - platform: state
-    entity_id: !input motion_entity
-    from: "off"
-    to: "on"
-
+    entity_id: binary_sensor.ewelink_ms01
+    from: 'off'
+    to: 'on'
+condition: []
 action:
   - choose:
       - conditions:
           - condition: time
-            before: !input midnight_time
+            before: '00:00:00'
         sequence:
           - service: light.turn_on
-            target: !input light_target
             data:
               brightness_pct: 100
+            target:
+              device_id: b3aba36507afb24400f6a8aac654d1b3
+              entity_id: e947e60950c022011d92ac2ba23877b7
           - wait_for_trigger:
               - platform: state
-                entity_id: !input motion_entity
-                from: "on"
-                to: "off"
-          - delay: '{{ (no_motion_wait | int) }}'
+                entity_id: binary_sensor.ewelink_ms01
+                from: 'on'
+                to: 'off'
+          - delay:
+              seconds: 60
           - service: light.turn_on
-            target: !input light_target
             data:
               brightness_pct: 50
-      default:
-        - service: light.turn_on
-          target: !input light_target
-          data:
-            brightness_pct: !input night_brightness_pct
-        - wait_for_trigger:
-            - platform: state
-              entity_id: !input motion_entity
-              from: "on"
-              to: "off"
-        - delay: '{{ (no_motion_wait | int) }}'
-        - service: light.turn_off
-          target: !input light_target
+            target:
+              device_id: b3aba36507afb24400f6a8aac654d1b3
+              entity_id: e947e60950c022011d92ac2ba23877b7
+    default:
+      - service: light.turn_on
+        data:
+          brightness_pct: 10
+        target:
+          device_id: b3aba36507afb24400f6a8aac654d1b3
+          entity_id: e947e60950c022011d92ac2ba23877b7
+      - wait_for_trigger:
+          - platform: state
+            entity_id: binary_sensor.ewelink_ms01
+            from: 'on'
+            to: 'off'
+      - delay:
+          seconds: 60
+      - service: light.turn_off
+        target:
+          device_id: b3aba36507afb24400f6a8aac654d1b3
+          entity_id: e947e60950c022011d92ac2ba23877b7
 
